@@ -1,0 +1,46 @@
+# Recompile with:
+# mkimage -C none -A arm -T script -d boot.cmd boot.scr
+
+# default values
+setenv kernel "zImage"
+setenv ramdisk "uInitrd"
+setenv fdtfile "sun8i-h3-nanopi-neo.dtb"
+setenv load_addr "0x44000000"
+setenv rootdev "/dev/mmcblk0p1"
+setenv verbosity "1"
+setenv console "both"
+setenv disp_mem_reserves "off"
+setenv rootfstype "ext4"
+setenv consoleargs "console=ttyS0,115200"
+setenv uuid "UUID=7ac33e6e-fa92-4fd2-bb7c-bde01b119803"
+setenv rootfstype "ext4"
+
+part uuid mmc 0:1 partuuid
+
+load mmc 0 ${kernel_addr_r} /boot/${kernel}
+load mmc 0 ${ramdisk_addr_r} /boot/${ramdisk}
+load mmc 0 ${fdt_addr_r} /boot/${fdtfile}
+fdt addr ${fdt_addr_r}
+fdt resize 65536
+
+load mmc 0 ${load_addr} /boot/dtb/sun8i-h3-w1-gpio.dtbo
+fdt apply ${load_addr}
+
+fdt set /soc/pinctrl@01c20800/w1_pins pins PG9
+fdt get value tmp_phandle /soc/pinctrl@01c20800 phandle
+fdt set /onewire@0 gpios "<${tmp_phandle} 6 9 0>" 
+fdt set /soc/pinctrl@01c20800/w1_pins bias-pull-up
+
+# setup MAC address 
+fdt set /soc/ethernet@1c30000 local-mac-address ${mac_node}
+
+# setup boot_device
+#fdt set mmc${boot_mmc} boot_device <1>
+
+#setenv fbcon map:0
+setenv bootargs console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p1 rootfstype=ext4 rw rootwait
+
+#fsck.repair=${fsck.repair} panic=10 ${extra} fbcon=${fbcon}
+
+#bootz ${kernel_addr} ${ramdisk_addr}:500000 ${fdt_addr_r}
+bootz ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
